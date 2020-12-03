@@ -10,7 +10,7 @@ data Rule = Rule {lo, hi :: Int, char :: Char} deriving Show
 data Password = Password Rule String deriving Show
 type Input = [Password]
 
-numValid :: (a -> Bool) -> [a] -> Int
+numOf :: (a -> Bool) -> [a] -> Int
 numValid p = length . filter p
 
 part1 :: Input -> Int
@@ -27,8 +27,8 @@ part2 = numValid valid
 prepare :: String -> Input
 prepare = fromMaybe [] . traverse parse . lines
   where parse = (=~ password)
-        password = Password <$> rule <*> many anySym
-        rule = Rule <$> int <* sym '-' <*> int <* sym ' ' <*> anySym <* string ": "
+        password = Password <$> rule <* string ": " <*> many anySym
+        rule = Rule <$> int <* sym '-' <*> int <* sym ' ' <*> anySym
         int = read <$> many (psym isDigit)
 
 main :: IO ()
