@@ -6,17 +6,23 @@ import Data.Maybe (fromMaybe)
 
 import Text.Regex.Applicative
 
-data Rule = Rule {atLeast, atMost :: Int, char :: Char} deriving Show
+data Rule = Rule {lo, hi :: Int, char :: Char} deriving Show
 data Password = Password Rule String deriving Show
 type Input = [Password]
 
-part1 :: Input -> Int
-part1 = length . filter valid
-  where valid (Password (Rule lo hi c) p) = numOccurs >= lo && numOccurs <= hi
-          where numOccurs = length $ filter (== c) p
+numValid :: (a -> Bool) -> [a] -> Int
+numValid p = length . filter p
 
-part2 :: Input -> ()
-part2 i = ()
+part1 :: Input -> Int
+part1 = numValid valid
+  where valid (Password (Rule lo hi c) p) = numOccurs >= lo && numOccurs <= hi
+          where numOccurs = numValid (== c) p
+
+part2 :: Input -> Int
+part2 = numValid valid
+  where valid (Password (Rule lo hi c) p) =
+          (== 1) . numValid (== c)
+          . map ((p !!) . pred) $ [lo, hi]
 
 prepare :: String -> Input
 prepare = fromMaybe [] . traverse parse . lines
