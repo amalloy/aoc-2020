@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ApplicativeDo #-}
 
 module Main where
 
@@ -62,13 +63,13 @@ prepare = fromMaybe [] . traverse passport . splitOn "\n\n"
   where passport = fmap (M.delete "cid" . M.fromList) . (=~ r)
         r :: RE Char [(String, String)]
         r = many field
-        field :: RE Char (String, String)
-        field = (,) <$>
-          (many (psym whitespace)
-          *> many (psym (/= ':')) :: RE Char String)
-          <*> (sym ':'
-          *> many (psym (not . whitespace)) :: RE Char String)
-          <* many (psym whitespace)
+        field = do
+          many $ psym whitespace
+          label <- many $ psym (/= ':')
+          sym ':'
+          value <- many $ psym (not . whitespace)
+          many $ psym whitespace
+          pure (label, value)
         whitespace = (`elem` " \n")
 
 main :: IO ()
