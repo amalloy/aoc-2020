@@ -1,15 +1,13 @@
-{-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE LambdaCase #-}
 module Main where
 
 import Control.Arrow ((&&&))
 import Data.Bool (bool)
-import Data.List (sort)
+import Data.List (foldl', sort)
 
 type Input = [Int]
 
 asBinary :: (a -> Bool) -> [a] -> Int
-asBinary one = foldl (\n x -> 2 * n + digit x) 0
+asBinary one = foldl' (\n x -> 2 * n + digit x) 0
   where digit = bool 0 1 . one
 
 part1 :: Input -> Int
