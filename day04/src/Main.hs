@@ -28,7 +28,7 @@ int :: RE Char Int
 int = read <$> many (psym isDigit)
 
 height :: RE Char Height
-height = Cm <$> (int <* string "cm")
+height =     Cm <$> (int <* string "cm")
          <|> In <$> (int <* string "in")
 
 regex :: RE Char a -> Rule
