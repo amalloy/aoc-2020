@@ -32,6 +32,9 @@ import Distribution.Simple
 main = defaultMain
 
 {-# START_FILE src/Main.hs #-}
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE LambdaCase #-}
+
 module Main where
 
 import Control.Arrow ((&&&))
@@ -39,10 +42,10 @@ import Control.Arrow ((&&&))
 type Input = [String]
 
 part1 :: Input -> ()
-part1 i = ()
+part1 = const ()
 
 part2 :: Input -> ()
-part2 i = ()
+part2 = const ()
 
 prepare :: String -> Input
 prepare = lines
@@ -51,7 +54,7 @@ main :: IO ()
 main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
 
 {-# START_FILE LICENSE #-}
-Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2019{{/year}}
+Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2020{{/year}}
 
 All rights reserved.
 
