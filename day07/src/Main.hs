@@ -9,7 +9,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
 import Control.Monad (unless)
-import Control.Monad.Trans.State.Lazy (execState, State, modify, gets)
+import Control.Monad.Trans.State.Lazy (evalState, execState, State, modify, gets)
 
 import Data.Char (isDigit)
 import Data.Foldable (for_, traverse_)
@@ -38,12 +38,23 @@ reachableFrom root g = flip execState S.empty $ walk root
 gold :: Color
 gold = Color "shiny" "gold"
 
+weightOf :: Color -> Graph -> State (M.Map Color Int) Int
+weightOf c g = do
+  present <- gets (M.lookup c)
+  case present of
+    Just w -> pure w
+    Nothing -> do
+      weight <- (succ . sum) <$> traverse weigh (g M.! c)
+      modify (M.insert c weight)
+      pure weight
+  where weigh :: Edge -> State (M.Map Color Int) Int
+        weigh (Edge c num) = (num *) <$> weightOf c g
+
 part1 :: Input -> Int
 part1 = length . S.delete gold . reachableFrom gold
 
-part2 :: Input -> ()
-part2 = const ()
-
+part2 :: Input -> Int
+part2 = pred . flip evalState M.empty . weightOf gold
 
 prepare :: String -> Input
 prepare = M.fromList . fromMaybe [] . traverse parse . lines
