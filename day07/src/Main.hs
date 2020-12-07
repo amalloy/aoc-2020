@@ -8,7 +8,11 @@ import Control.Arrow ((&&&))
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
+import Control.Monad (unless)
+import Control.Monad.Trans.State.Lazy (execState, State, modify, gets)
+
 import Data.Char (isDigit)
+import Data.Foldable (for_, traverse_)
 import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 
@@ -17,8 +21,25 @@ data Edge = Edge Color Int deriving Show
 type Graph = M.Map Color [Edge]
 type Input = Graph
 
-part1 :: Input -> ()
-part1 = const ()
+reachableFrom :: Color -> Graph -> S.Set Color
+reachableFrom root g = flip execState S.empty $ walk root
+  where containedIn :: M.Map Color (S.Set Color)
+        containedIn = M.fromListWith (<>) $ do
+          (owner, contents) <- M.assocs g
+          Edge inner _num <- contents
+          pure (inner, S.singleton owner)
+        walk :: Color -> State (S.Set Color) ()
+        walk c = do
+          seen <- gets (S.member c)
+          unless seen $ do
+            modify (S.insert c)
+            traverse_ walk $ M.findWithDefault S.empty c containedIn
+
+gold :: Color
+gold = Color "shiny" "gold"
+
+part1 :: Input -> Int
+part1 = length . S.delete gold . reachableFrom gold
 
 part2 :: Input -> ()
 part2 = const ()
