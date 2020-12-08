@@ -12,7 +12,7 @@ import Control.Monad (unless)
 import Control.Monad.Trans.State.Lazy (evalState, execState, State, modify, gets)
 
 import Data.Char (isDigit)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 
@@ -39,13 +39,12 @@ gold :: Color
 gold = Color "shiny" "gold"
 
 weightOf :: Color -> Graph -> State (M.Map Color Int) Int
-weightOf c g = do
-  present <- gets (M.lookup c)
-  case present of
+weightOf root g = gets (M.lookup root) >>=
+  \case
     Just w -> pure w
     Nothing -> do
-      weight <- (succ . sum) <$> traverse weigh (g M.! c)
-      modify (M.insert c weight)
+      weight <- succ . sum <$> traverse weigh (g M.! root)
+      modify (M.insert root weight)
       pure weight
   where weigh :: Edge -> State (M.Map Color Int) Int
         weigh (Edge c num) = (num *) <$> weightOf c g
@@ -66,12 +65,13 @@ parse = (=~ rule)
     rule = do
       outer <- bag
       string "s contain "
-      contents <- empty <|> full
+      contents <- leaf <|> node
       pure (outer, contents)
-        where full = many $
-                  uncurry Edge <$>
-                  numbered bag <* (string ", " <|> string ".")
-              empty = [] <$ string "no other bags."
+      where leaf = [] <$ string "no other bags."
+            node = many $
+                uncurry Edge <$>
+                numbered bag <* (string ", " <|> string ".")
+
     bag :: RE Char Color
     bag = do
       descriptor <- word
@@ -89,7 +89,6 @@ parse = (=~ rule)
       pure (x, num)
     space = sym ' '
     word = many (psym (/= ' '))
-
 
 main :: IO ()
 main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
