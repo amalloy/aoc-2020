@@ -5,6 +5,7 @@ module Main where
 
 import Control.Arrow ((&&&))
 import Data.Char (isDigit)
+import Data.Foldable (toList)
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Set as Set
@@ -15,6 +16,8 @@ import Text.Regex.Applicative
 data Code = Acc | Jmp | Nop deriving Show
 data Instruction = Instr Code Int deriving Show
 data State = State {acc, pc :: Int, visited :: Set.Set Int} deriving Show
+data StopReason = InfiniteLoop | Finished | Segfault
+data Mode = Running | StopReason StopReason
 
 type Program = Seq.Seq Instruction
 type Input = Program
@@ -31,15 +34,42 @@ step prog (State a p v) =
   where Instr code arg = Seq.index prog p
         visit' = Set.insert p v
 
-complete :: Program -> State -> State
-complete prog = head . dropWhile (not . done) . iterate (step prog)
-  where done (State _ p v) = Set.member p v
+complete :: Program -> State -> (Mode, State)
+complete prog =
+  head . dropWhile (running . fst) . map addLabel . iterate (step prog)
+  where running Running = True
+        running _ = False
+        addLabel :: State -> (Mode, State)
+        addLabel s = (label s, s)
+        label (State _ p v) | Set.member p v = StopReason InfiniteLoop
+                            | p == size = StopReason Finished
+                            | p < 0 || p > size = StopReason Segfault
+                            | otherwise = Running
+        size = Seq.length prog
+
+allFixes :: Program -> [Program]
+allFixes = map Seq.fromList . fix . toList
+  where
+    fix [] = []
+    fix (i@(Instr code arg):prog) =
+      case code of
+        Nop -> (Instr Jmp arg : prog) : go
+        Jmp -> (Instr Nop arg : prog) : go
+        Acc -> go
+      where go = (i:) <$> fix prog
 
 part1 :: Input -> Int
-part1 = acc . (`complete` initialState)
+part1 = acc . snd . (`complete` initialState)
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> [Int]
+part2 =
+  map (acc . snd)
+  . filter (succeed . fst)
+  . map (`complete` initialState)
+  . allFixes
+  where succeed :: Mode -> Bool
+        succeed (StopReason Finished) = True
+        succeed _ = False
 
 prepare :: String -> Input
 prepare = Seq.fromList . fromMaybe [] . traverse parse . lines
