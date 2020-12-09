@@ -13,26 +13,30 @@ import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 
 data Color = Color String String deriving (Eq, Ord, Show)
-data Edge = Edge {edgeColor :: Color, edgeWeight :: Int} deriving Show
+data Edge = Edge Color Int deriving Show
 type Graph = M.Map Color [Edge]
 type Input = Graph
 
-canReach :: Color -> Graph -> S.Set Color
-canReach goal g =
-  S.delete goal . S.fromList . map fst . filter (S.member goal . snd) . M.assocs $ table
+fixMap :: (Color -> [(Int, a)] -> a) -> Graph -> M.Map Color a
+fixMap f g = table
   where table = M.fromList $ do
           (color, edges) <- M.assocs g
-          pure (color, S.insert color . S.unions . map ((table M.!) . edgeColor) $ edges)
+          pure (color, f color . map fixEdge $ edges)
+        fixEdge (Edge color weight) = (weight, table M.! color)
+
+canReach :: Color -> Graph -> S.Set Color
+canReach goal =
+  S.delete goal . S.fromList
+  . map fst . filter (S.member goal . snd)
+  . M.assocs . fixMap reachable
+  where reachable color = S.insert color . S.unions . map snd
 
 gold :: Color
 gold = Color "shiny" "gold"
 
 weightOf :: Color -> Graph -> Int
-weightOf root g = table M.! root
-  where table = M.fromList $ do
-          (color, edges) <- M.assocs g
-          pure (color, succ . sum . map weight $ edges)
-            where weight (Edge c n) = n * (table M.! c)
+weightOf root = (M.! root) . fixMap weight
+  where weight _color = succ . sum . map (uncurry (*))
 
 part1 :: Input -> Int
 part1 = length . canReach gold
