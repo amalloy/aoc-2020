@@ -5,55 +5,40 @@ module Main where
 
 import Control.Arrow ((&&&))
 
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Lazy as M
 import qualified Data.Set as S
 
-import Control.Monad (unless)
-import Control.Monad.Trans.State.Lazy (evalState, execState, State, modify, gets)
-
 import Data.Char (isDigit)
-import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe)
 import Text.Regex.Applicative
 
 data Color = Color String String deriving (Eq, Ord, Show)
-data Edge = Edge Color Int deriving Show
+data Edge = Edge {edgeColor :: Color, edgeWeight :: Int} deriving Show
 type Graph = M.Map Color [Edge]
 type Input = Graph
 
-reachableFrom :: Color -> Graph -> S.Set Color
-reachableFrom root g = flip execState S.empty $ walk root
-  where containedIn :: M.Map Color (S.Set Color)
-        containedIn = M.fromListWith (<>) $ do
-          (owner, contents) <- M.assocs g
-          Edge inner _num <- contents
-          pure (inner, S.singleton owner)
-        walk :: Color -> State (S.Set Color) ()
-        walk c = do
-          seen <- gets (S.member c)
-          unless seen $ do
-            modify (S.insert c)
-            traverse_ walk $ M.findWithDefault S.empty c containedIn
+canReach :: Color -> Graph -> S.Set Color
+canReach goal g =
+  S.delete goal . S.fromList . map fst . filter (S.member goal . snd) . M.assocs $ table
+  where table = M.fromList $ do
+          (color, edges) <- M.assocs g
+          pure (color, S.insert color . S.unions . map ((table M.!) . edgeColor) $ edges)
 
 gold :: Color
 gold = Color "shiny" "gold"
 
-weightOf :: Color -> Graph -> State (M.Map Color Int) Int
-weightOf root g = gets (M.lookup root) >>=
-  \case
-    Just w -> pure w
-    Nothing -> do
-      weight <- succ . sum <$> traverse weigh (g M.! root)
-      modify (M.insert root weight)
-      pure weight
-  where weigh :: Edge -> State (M.Map Color Int) Int
-        weigh (Edge c num) = (num *) <$> weightOf c g
+weightOf :: Color -> Graph -> Int
+weightOf root g = table M.! root
+  where table = M.fromList $ do
+          (color, edges) <- M.assocs g
+          pure (color, succ . sum . map weight $ edges)
+            where weight (Edge c n) = n * (table M.! c)
 
 part1 :: Input -> Int
-part1 = length . S.delete gold . reachableFrom gold
+part1 = length . canReach gold
 
 part2 :: Input -> Int
-part2 = pred . flip evalState M.empty . weightOf gold
+part2 = pred . weightOf gold
 
 prepare :: String -> Input
 prepare = M.fromList . fromMaybe [] . traverse parse . lines

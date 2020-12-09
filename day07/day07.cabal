@@ -21,7 +21,6 @@ executable day07
               -Wincomplete-uni-patterns
               -Wredundant-constraints
   build-depends:       base >= 4.7 && < 5
-                     , transformers
                      , containers
                      , parsec
                      , regex-applicative
