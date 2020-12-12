@@ -23,8 +23,19 @@ deltas = tail $ do
 add :: Coord -> Coord -> Coord
 add (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
+seatAt :: Layout -> Coord -> Usage
+seatAt = flip (M.findWithDefault Seat)
+
 neighbors :: Ticker
-neighbors m c = map (flip (M.findWithDefault Seat) m . add c) deltas
+neighbors m c = map (seatAt m . add c) deltas
+
+distantNeighbors :: Ticker
+distantNeighbors m c = do
+  direction <- deltas
+  let coords = tail . iterate (add direction) $ c
+      usages = map (seatAt m) coords
+      target = dropWhile (== Floor) usages
+  pure $ head target
 
 transition :: Int -> (Int -> Usage -> Usage)
 transition p liveNeighbors v = case v of
@@ -50,8 +61,8 @@ solve p m = let states = iterate (tick p) m
 part1 :: Input -> Int
 part1 = solve (Parameters 4 neighbors)
 
-part2 :: Input -> ()
-part2 = const ()
+part2 :: Input -> Int
+part2 = solve (Parameters 5 distantNeighbors)
 
 prepare :: String -> Input
 prepare input = M.fromList $ do
