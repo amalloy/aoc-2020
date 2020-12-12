@@ -10,33 +10,45 @@ type Coord = (Int, Int)
 type Layout = Map Coord Usage
 type Input = Layout
 
-neighbors :: Coord -> [Coord]
-neighbors c = map (add c) . tail $ do
+type Ticker = Layout -> Coord -> [Usage]
+type Pickiness = Int
+data Parameters = Parameters {pickiness :: Int, step :: Ticker}
+
+deltas :: [Coord]
+deltas = tail $ do
   dy <- [0,1,-1]
   dx <- [0,1,-1]
   pure (dy, dx)
-  where add (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
-nextState :: Layout -> Coord -> Usage -> Usage
-nextState m k v = case v of
+add :: Coord -> Coord -> Coord
+add (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
+
+neighbors :: Ticker
+neighbors m c = map (flip (M.findWithDefault Seat) m . add c) deltas
+
+transition :: Int -> (Int -> Usage -> Usage)
+transition p liveNeighbors v = case v of
   Floor -> Floor
   Seat | liveNeighbors == 0 -> Occupied
        | otherwise -> Seat
-  Occupied | liveNeighbors >= 4 -> Seat
+  Occupied | liveNeighbors >= p -> Seat
            | otherwise -> Occupied
 
-  where liveNeighbors = length . filter (== Occupied)
-                        . map (flip (M.findWithDefault Floor) m) . neighbors
-                        $ k
+nextState :: Parameters -> Layout -> Coord -> Usage -> Usage
+nextState (Parameters p t) m k = transition p liveNeighbors
+  where liveNeighbors = length . filter (== Occupied) . t m $ k
 
-tick :: Layout -> Layout
-tick m = M.mapWithKey (nextState m) m
+tick :: Parameters -> Layout -> Layout
+tick p m = M.mapWithKey (nextState p m) m
+
+solve :: Parameters -> Input -> Int
+solve p m = let states = iterate (tick p) m
+                pairs = zip <*> tail $ states
+                firstDup = fst . head . dropWhile (uncurry (/=)) $ pairs
+            in length . filter (== Occupied) . M.elems $ firstDup
 
 part1 :: Input -> Int
-part1 m = let states = iterate tick m
-              pairs = zip <*> tail $ states
-              firstDup = fst . head . dropWhile (uncurry (/=)) $ pairs
-          in length . filter (== Occupied) . M.elems $ firstDup
+part1 = solve (Parameters 4 neighbors)
 
 part2 :: Input -> ()
 part2 = const ()
