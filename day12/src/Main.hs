@@ -11,6 +11,7 @@ data Heading = Absolute Compass | Relative Relative deriving Show
 data Compass = N | E | S | W deriving Show
 data Relative = F | L | R deriving Show
 data Ship = Ship {heading :: Compass, position :: Coord}
+data Traveler = Traveler {ship, waypoint :: Coord} deriving Show
 
 type Input = [Instruction]
 
@@ -35,33 +36,49 @@ move :: Int -> Compass -> Coord -> Coord
 move n d (x, y) = let (dx, dy) = toDelta d
                   in (x + dx * n, y + dy * n)
 
-follow :: Ship -> Instruction -> Ship
-follow (Ship h pos) (Instruction t n) = case t of
-  Absolute c -> Ship h (move n c pos)
-  Relative F -> Ship h (move n h pos)
-  Relative r -> Ship h' pos
-    where h' = iterate (turn r) h !! (n `div` 90)
 
 manhattan :: Coord -> Int
 manhattan (x, y) = abs x + abs y
 
 part1 :: Input -> Int
 part1 = manhattan . position . foldl' follow (Ship E (0, 0))
+  where follow :: Ship -> Instruction -> Ship
+        follow (Ship h pos) (Instruction t n) = case t of
+          Absolute c -> Ship h (move n c pos)
+          Relative F -> Ship h (move n h pos)
+          Relative r -> Ship h' pos
+            where h' = iterate (turn r) h !! n
 
-part2 :: Input -> ()
-part2 = const ()
+
+part2 :: Input -> Int
+part2 = manhattan . ship .foldl' useWaypoint (Traveler (0, 0) (10, 1))
+
+useWaypoint :: Traveler -> Instruction -> Traveler
+useWaypoint (Traveler pos wp) (Instruction t n) = case t of
+  Absolute c -> Traveler pos (move n c wp)
+  Relative F -> Traveler pos' wp
+    where pos' = let (x, y) = pos
+                     (dx, dy) = wp
+                 in (x + n * dx, y + n * dy)
+  Relative R -> Traveler pos (right 1)
+  Relative L -> Traveler pos (right 3)
+  where right m = iterate turnRight wp !! (n * m)
+        turnRight (x, y) = (y, -x)
+
 
 prepare :: String -> Input
 prepare = map parse . lines
-  where parse (c:n) = Instruction d (read n)
-          where d = case c of
-                      'N' -> Absolute N
-                      'S' -> Absolute S
-                      'E' -> Absolute E
-                      'W' -> Absolute W
-                      'F' -> Relative F
-                      'R' -> Relative R
-                      'L' -> Relative L
+  where parse (c:n) = case c of
+                        'N' -> raw N
+                        'S' -> raw S
+                        'E' -> raw E
+                        'W' -> raw W
+                        'F' -> Instruction (Relative F) amt
+                        'R' -> scaled R
+                        'L' -> scaled L
+          where amt = read n
+                raw d = Instruction (Absolute d) amt
+                scaled d = Instruction (Relative d) (amt `div` 90)
 
 main :: IO ()
 main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
