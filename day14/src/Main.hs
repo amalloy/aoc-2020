@@ -36,8 +36,7 @@ interpret One = flip setBit
 interpret Zero = flip clearBit
 
 apply :: Mask -> (Int -> Int)
-apply (Mask trits) = let fs = zipWith interpret trits powers
-                     in flip (foldl' (flip ($))) fs
+apply (Mask trits) = foldr (.) id $ zipWith interpret trits powers
 
 step :: Computer -> Instruction -> Computer
 step (Computer mask mem) = \case
