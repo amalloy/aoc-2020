@@ -26,11 +26,14 @@ initialize inputs =
             , spokenMap = M.fromList . flip zip [1..] . init $ inputs
             }
 
-part1 :: Input -> Int
-part1 = mostRecent . head . filter ((== 2020) . turnCount) . iterate step . initialize
+solve :: Int -> Input -> Int
+solve n = mostRecent . head . filter ((== n) . turnCount) . iterate step . initialize
 
-part2 :: Input -> ()
-part2 = const ()
+part1 :: Input -> Int
+part1 = solve 2020
+
+part2 :: Input -> Int
+part2 = solve 30000000
 
 prepare :: String -> Input
 prepare = map read . splitOn ","
