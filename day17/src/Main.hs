@@ -45,9 +45,9 @@ tick cube = do
   cube' <- newArray bounds' False
   for_ (range bounds') $ \coord -> do
     let ns = neighbors coord
-    living <- traverse oldValue ns
+    neighborStates <- traverse oldValue ns
     curr <- oldValue coord
-    writeArray cube' coord (shouldLive curr (length $ filter id living))
+    writeArray cube' coord (shouldLive curr (length $ filter id neighborStates))
   pure cube'
 
 type Vec3 = (Int, Int, Int)
