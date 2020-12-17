@@ -1,26 +1,34 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Main where
 
 import Control.Arrow ((&&&))
-import Control.Applicative (liftA3)
 import Control.Monad (guard, replicateM)
 import Control.Monad.ST (ST, runST)
-import Data.Array.ST (STUArray, getAssocs, readArray, writeArray, newArray, getBounds, getElems)
+import Data.Array.ST (STUArray, readArray, writeArray, newArray, getBounds, getElems)
 import Data.Foldable (for_)
-import Data.Ix (inRange)
+import Data.Ix (Ix, inRange, range)
 
-type Coord = (Int, Int, Int)
-type Cube s = STUArray s Coord Bool
+class Coord c where
+  neighbors :: c -> [c]
+  plus :: Int -> c -> c
+
+instance Coord (Int, Int, Int) where
+  plus n (x, y, z) = (x+n, y+n, z+n)
+  neighbors (x, y, z) = tail [(x+dx,y+dy,z+dz) |
+                              [dx, dy, dz] <- replicateM 3 [0, -1, 1]]
+
+instance Coord (Int, Int, Int, Int) where
+  plus n (x, y, z, w) = (x+n, y+n, z+n, w+n)
+  neighbors (x, y, z, w) = tail [(x+dx,y+dy,z+dz,w+dw) |
+                                 [dx, dy, dz, dw] <- replicateM 4 [0, -1, 1]]
+
+type Cube s c = STUArray s c Bool
 
 iterateM :: Monad m => Int -> (a -> m a) -> a -> m a
 iterateM 0 _f x = pure x
 iterateM n f x = f x >>= iterateM (n - 1) f
-
-neighbors :: Coord -> [Coord]
-neighbors (x, y, z) = tail [(x+dx,y+dy,z+dz) | [dx, dy, dz] <- replicateM 3 [0, -1, 1]]
 
 shouldLive :: Bool -> Int -> Bool
 shouldLive alive numLivingNeighbors = case numLivingNeighbors of
@@ -28,39 +36,38 @@ shouldLive alive numLivingNeighbors = case numLivingNeighbors of
   3 -> True
   _ -> False
 
-tick :: Cube s -> ST s (Cube s)
+tick :: (Ix c, Coord c) => Cube s c -> ST s (Cube s c)
 tick cube = do
-  bounds@((xmin, ymin, zmin), (xmax, ymax, zmax)) <- getBounds cube
-  let bounds'@((xmin', ymin', zmin'), (xmax', ymax', zmax')) =
-        ((xmin-1, ymin-1, zmin-1), (xmax+1, ymax+1, zmax+1))
+  bounds@(lo, hi) <- getBounds cube
+  let bounds' = (plus (-1) lo, plus 1 hi)
       oldValue c | inRange bounds c = readArray cube c
                  | otherwise = pure False
   cube' <- newArray bounds' False
-  for_ (liftA3 (,,) [xmin'..xmax'] [ymin'..ymax'] [zmin'..zmax']) $ \coord -> do
+  for_ (range bounds') $ \coord -> do
     let ns = neighbors coord
     living <- traverse oldValue ns
     curr <- oldValue coord
     writeArray cube' coord (shouldLive curr (length $ filter id living))
   pure cube'
 
-test :: [(Coord, Bool)]
-test = runST $ do
-  cube <- newArray ((0,0,0), (1,1,0)) False :: forall s. ST s (STUArray s Coord Bool)
-  for_ [(0,0,0), (1,1,0), (0,1,0)] $ (flip (writeArray cube) True)
-  cube' <- iterateM 2 tick cube
-  getAssocs cube'
+type Vec3 = (Int, Int, Int)
+type Input = ((Vec3, Vec3), [Vec3])
 
-type Input = ((Coord, Coord), [Coord])
-
-part1 :: Input -> Int
-part1 (bounds, alive) = runST $ do
+run :: (Ix c, Coord c) => ((c, c), [c]) -> Int
+run (bounds, alive) = runST $ do
   cube <- newArray bounds False
   for_ alive $ \c -> writeArray cube c True
   cube' <- iterateM 6 tick cube
   length . filter id <$> getElems cube'
 
-part2 :: Input -> ()
-part2 = const ()
+part1 :: Input -> Int
+part1 = run
+
+lift :: Vec3 -> (Int, Int, Int, Int)
+lift (x, y, z) = (x, y, z, 0)
+
+part2 :: Input -> Int
+part2 ((lo, hi), alive) = run ((lift lo, lift hi), map lift alive)
 
 prepare :: String -> Input
 prepare s = let ls = lines s
