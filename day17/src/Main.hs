@@ -62,11 +62,9 @@ run (bounds, alive) = runST $ do
 part1 :: Input -> Int
 part1 = run
 
-lift :: -> (Int, Int, Int, Int)
-lift (x, y, z) = (x, y, z, 0)
-
 part2 :: Input -> Int
 part2 ((lo, hi), alive) = run ((lift lo, lift hi), map lift alive)
+  where lift (x, y, z) = (x, y, z, 0)
 
 prepare :: String -> Input
 prepare s = let ls = lines s
