@@ -10,7 +10,7 @@ import Data.Array.ST (STUArray, readArray, writeArray, newArray, getBounds, getE
 import Data.Foldable (for_)
 import Data.Ix (Ix, inRange, range)
 
-class Coord c where
+class Ix c => Coord c where
   neighbors :: c -> [c]
   plus :: Int -> c -> c
 
@@ -36,7 +36,7 @@ shouldLive alive numLivingNeighbors = case numLivingNeighbors of
   3 -> True
   _ -> False
 
-tick :: (Ix c, Coord c) => Cube s c -> ST s (Cube s c)
+tick :: Coord c => Cube s c -> ST s (Cube s c)
 tick cube = do
   bounds@(lo, hi) <- getBounds cube
   let bounds' = (plus (-1) lo, plus 1 hi)
@@ -53,7 +53,7 @@ tick cube = do
 type Vec3 = (Int, Int, Int)
 type Input = ((Vec3, Vec3), [Vec3])
 
-run :: (Ix c, Coord c) => ((c, c), [c]) -> Int
+run :: Coord c => ((c, c), [c]) -> Int
 run (bounds, alive) = runST $ do
   cube <- newArray bounds False
   for_ alive $ \c -> writeArray cube c True
