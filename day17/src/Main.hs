@@ -10,6 +10,10 @@ import Data.Array.ST (STUArray, readArray, writeArray, newArray, getBounds, getE
 import Data.Foldable (for_)
 import Data.Ix (Ix, inRange, range)
 
+type Vec3 = (Int, Int, Int)
+type Input = ((Vec3, Vec3), [Vec3])
+type Cube s i = STUArray s i Bool
+
 class Ix c => Coord c where
   neighbors :: c -> [c]
   plus :: Int -> c -> c
@@ -23,8 +27,6 @@ instance Coord (Int, Int, Int, Int) where
   plus n (x, y, z, w) = (x+n, y+n, z+n, w+n)
   neighbors (x, y, z, w) = tail [(x+dx,y+dy,z+dz,w+dw) |
                                  [dx, dy, dz, dw] <- replicateM 4 [0, -1, 1]]
-
-type Cube s c = STUArray s c Bool
 
 iterateM :: Monad m => Int -> (a -> m a) -> a -> m a
 iterateM 0 _f x = pure x
@@ -50,9 +52,6 @@ tick cube = do
     writeArray cube' coord (shouldLive curr (length $ filter id neighborStates))
   pure cube'
 
-type Vec3 = (Int, Int, Int)
-type Input = ((Vec3, Vec3), [Vec3])
-
 run :: Coord c => ((c, c), [c]) -> Int
 run (bounds, alive) = runST $ do
   cube <- newArray bounds False
@@ -63,7 +62,7 @@ run (bounds, alive) = runST $ do
 part1 :: Input -> Int
 part1 = run
 
-lift :: Vec3 -> (Int, Int, Int, Int)
+lift :: -> (Int, Int, Int, Int)
 lift (x, y, z) = (x, y, z, 0)
 
 part2 :: Input -> Int
