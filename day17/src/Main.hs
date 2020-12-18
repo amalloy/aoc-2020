@@ -1,32 +1,37 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Main where
 
-import Control.Arrow ((&&&))
-import Control.Monad (guard, replicateM)
+import Control.Monad (guard)
 import Control.Monad.ST (ST, runST)
 import Data.Array.ST (STUArray, readArray, writeArray, newArray, getBounds, getElems)
 import Data.Foldable (for_)
 import Data.Ix (Ix, inRange, range)
 
-type Vec3 = (Int, Int, Int)
-type Input = ((Vec3, Vec3), [Vec3])
+type Vec2 = (Int, Int)
+data Parameters a = Parameters (a, a) [a] deriving Functor
+type Input = Parameters Vec2
 type Cube s i = STUArray s i Bool
 
 class Ix c => Coord c where
   neighbors :: c -> [c]
   plus :: Int -> c -> c
 
-instance Coord (Int, Int, Int) where
-  plus n (x, y, z) = (x+n, y+n, z+n)
-  neighbors (x, y, z) = tail [(x+dx,y+dy,z+dz) |
-                              [dx, dy, dz] <- replicateM 3 [0, -1, 1]]
+instance Coord Int where
+  plus = (+)
+  neighbors = sequence [id, pred, succ]
 
-instance Coord (Int, Int, Int, Int) where
-  plus n (x, y, z, w) = (x+n, y+n, z+n, w+n)
-  neighbors (x, y, z, w) = tail [(x+dx,y+dy,z+dz,w+dw) |
-                                 [dx, dy, dz, dw] <- replicateM 4 [0, -1, 1]]
+instance Coord c => Coord (Int, c) where
+  plus n (x, c) = (plus n x, plus n c)
+  neighbors (x, c) = do
+    n <- neighbors c
+    delta <- [0, -1, 1]
+    pure (plus x delta, n)
+
+nextDimension :: a -> (Int, a)
+nextDimension n = (0, n)
 
 iterateM :: Monad m => Int -> (a -> m a) -> a -> m a
 iterateM 0 _f x = pure x
@@ -47,34 +52,35 @@ tick cube = do
   cube' <- newArray bounds' False
   for_ (range bounds') $ \coord -> do
     let ns = neighbors coord
-    neighborStates <- traverse oldValue ns
-    curr <- oldValue coord
-    writeArray cube' coord (shouldLive curr (length $ filter id neighborStates))
+    self:others <- traverse oldValue ns
+    writeArray cube' coord (shouldLive self (length $ filter id others))
   pure cube'
 
-run :: Coord c => ((c, c), [c]) -> Int
-run (bounds, alive) = runST $ do
+run :: Coord c => Parameters c -> Int
+run (Parameters bounds alive) = runST $ do
   cube <- newArray bounds False
   for_ alive $ \c -> writeArray cube c True
   cube' <- iterateM 6 tick cube
   length . filter id <$> getElems cube'
 
 part1 :: Input -> Int
-part1 = run
+part1 = run . fmap nextDimension
 
 part2 :: Input -> Int
-part2 ((lo, hi), alive) = run ((lift lo, lift hi), map lift alive)
-  where lift (x, y, z) = (x, y, z, 0)
+part2 = run . fmap (nextDimension . nextDimension)
+
+extraCredit :: Input -> Int
+extraCredit = run . fmap (nextDimension . nextDimension . nextDimension)
 
 prepare :: String -> Input
 prepare s = let ls = lines s
                 dim = length (head ls)
-                bounds = ((0,0,0), (dim-1, dim-1, 0))
-            in (bounds, do
+                bounds = ((0,0), (dim-1, dim-1))
+            in Parameters bounds $ do
                    (x, line) <- zip [0..] ls
                    (y, c) <- zip [0..] line
                    guard $ c == '#'
-                   pure (x, y, 0))
+                   pure (x, y)
 
 main :: IO ()
-main = readFile "input.txt" >>= print . (part1 &&& part2) . prepare
+main = readFile "input.txt" >>= print . sequence [part1, part2, extraCredit] . prepare
