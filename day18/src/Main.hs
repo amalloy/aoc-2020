@@ -17,32 +17,27 @@ data Op = Plus | Times deriving Show
 int :: Parser Expr
 int = Int . read <$> many1 digit
 
-expr :: Parser Expr
-expr = chainl1 (parens <|> int) op
-  where parens = char '(' *> expr <* char ')'
-        op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
-
-
 eval :: Expr -> Int
 eval (Int x) = x
 eval (Bin op x y) = f (eval x) (eval y)
   where f = case op of Plus -> (+); Times -> (*)
-
-expr2 :: Parser Expr
-expr2 = product <|> addend
-  where paren = char '(' *> expr2 <* char ')'
-        product = chainl1 sum (Bin Times <$ char '*')
-        sum = chainl1 addend (Bin Plus <$ char '+')
-        addend = int <|> paren
 
 run :: Parser Expr -> Input -> Either ParseError Int
 run p = fmap sum . traverse (fmap eval . parse p "stdin")
 
 part1 :: Input -> Either ParseError Int
 part1 = run expr
+  where expr = chainl1 (parens <|> int) op
+        parens = char '(' *> expr <* char ')'
+        op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
 
 part2 :: Input -> Either ParseError Int
-part2 = run expr2
+part2 = run expr
+  where expr = product <|> addend
+        paren = char '(' *> expr <* char ')'
+        product = chainl1 sum (Bin Times <$ char '*')
+        sum = chainl1 addend (Bin Plus <$ char '+')
+        addend = int <|> paren
 
 prepare :: String -> Input
 prepare = map (filter (/= ' ')) . lines
