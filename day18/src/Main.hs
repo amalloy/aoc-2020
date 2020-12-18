@@ -1,11 +1,11 @@
 module Main where
 
 import Control.Arrow ((&&&))
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), some)
 import Text.Parsec.String (Parser)
 import Text.Parsec.Char
 import Text.Parsec.Combinator (chainl1)
-import Text.Parsec (parse, ParseError, many1)
+import Text.Parsec (parse, ParseError)
 
 type Input = [String]
 
@@ -15,7 +15,7 @@ data Expr = Int Int
 data Op = Plus | Times deriving Show
 
 int :: Parser Expr
-int = Int . read <$> many1 digit
+int = Int . read <$> some digit
 
 eval :: Expr -> Int
 eval (Int x) = x
