@@ -17,12 +17,11 @@ data Op = Plus | Times deriving Show
 int :: Parser Expr
 int = Int . read <$> many1 digit
 
-op :: Parser (Expr -> Expr -> Expr)
-op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
-
 expr :: Parser Expr
 expr = chainl1 (parens <|> int) op
   where parens = char '(' *> expr <* char ')'
+        op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
+
 
 eval :: Expr -> Int
 eval (Int x) = x
