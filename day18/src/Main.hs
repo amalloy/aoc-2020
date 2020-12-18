@@ -10,7 +10,7 @@ import Text.Parsec (parse, ParseError, many1)
 type Input = [String]
 
 data Expr = Int Int
-          | Bin Expr Op Expr deriving Show
+          | Bin Op Expr Expr deriving Show
 
 data Op = Plus | Times deriving Show
 
@@ -18,7 +18,7 @@ int :: Parser Expr
 int = Int . read <$> many1 digit
 
 op :: Parser (Expr -> Expr -> Expr)
-op = flip Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
+op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
 
 expr :: Parser Expr
 expr = chainl1 (parens <|> int) op
@@ -26,16 +26,14 @@ expr = chainl1 (parens <|> int) op
 
 eval :: Expr -> Int
 eval (Int x) = x
-eval (Bin x op y) = f (eval x) (eval y)
+eval (Bin op x y) = f (eval x) (eval y)
   where f = case op of Plus -> (+); Times -> (*)
 
 expr2 :: Parser Expr
 expr2 = product <|> addend
   where paren = char '(' *> expr2 <* char ')'
-        product = chainl1 sum (p <$ char '*')
-          where p = flip Bin Times
-        sum = chainl1 addend (s <$ char '+')
-          where s = flip Bin Plus
+        product = chainl1 sum (Bin Times <$ char '*')
+        sum = chainl1 addend (Bin Plus <$ char '+')
         addend = int <|> paren
 
 run :: Parser Expr -> Input -> Either ParseError Int
