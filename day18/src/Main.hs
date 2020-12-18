@@ -32,12 +32,11 @@ part1 = run expr
         op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
 
 part2 :: Input -> Either ParseError Int
-part2 = run expr
-  where expr = product <|> addend
-        paren = char '(' *> expr <* char ')'
-        product = chainl1 sum (Bin Times <$ char '*')
+part2 = run product
+  where product = chainl1 sum (Bin Times <$ char '*')
         sum = chainl1 addend (Bin Plus <$ char '+')
         addend = int <|> paren
+        paren = char '(' *> product <* char ')'
 
 prepare :: String -> Input
 prepare = map (filter (/= ' ')) . lines
