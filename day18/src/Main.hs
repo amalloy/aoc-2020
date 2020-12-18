@@ -20,11 +20,14 @@ int = Int . read <$> many1 digit
 op :: Parser Op
 op = Plus <$ char '+' <|> Times <$ char '*'
 
+chain :: (Expr -> a -> Expr) -> Parser Expr -> Parser a -> Parser Expr
+chain combine base repeated = do
+  l <- base
+  more <- many repeated
+  pure $ foldl' combine l more
+
 expr :: Parser Expr
-expr = do
-  l <- simple
-  more <- many ((,) <$> op <*> simple)
-  pure $ foldl' build l more
+expr = chain build simple ((,) <$> op <*> simple)
   where simple = parens <|> int
         build left (op, right) = Bin left op right
         parens = char '(' *> expr <* char ')'
@@ -37,18 +40,10 @@ eval (Bin x op y) = f (eval x) (eval y)
 expr2 :: Parser Expr
 expr2 = product <|> addend
   where paren = char '(' *> expr2 <* char ')'
-        product = try go <|> sum
-          where go = do
-                  left <- sum
-                  more <- many (char '*' *> sum)
-                  pure $ foldl' p left more
-                p l r = Bin l Times r
-        sum = try go <|> addend
-          where go = do
-                  left <- addend
-                  more <- many (char '+' *> addend)
-                  pure $ foldl' s left more
-                s l r = Bin l Plus r
+        product = try (chain p sum (char '*' *> sum)) <|> sum
+          where p l r = Bin l Times r
+        sum = try (chain s addend (char '+' *> addend)) <|> addend
+          where s l r = Bin l Plus r
         addend = int <|> paren
 
 run :: Parser Expr -> Input -> Either ParseError Int
