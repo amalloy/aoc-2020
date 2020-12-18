@@ -5,7 +5,7 @@ import Control.Applicative ((<|>))
 import Data.List (foldl')
 import Text.Parsec.String (Parser)
 import Text.Parsec.Char
-import Text.Parsec (parse, ParseError, many1, many)
+import Text.Parsec (parse, ParseError, many1, many, try)
 
 type Input = [String]
 
@@ -17,9 +17,6 @@ data Op = Plus | Times deriving Show
 int :: Parser Expr
 int = Int . read <$> many1 digit
 
-parens :: Parser Expr
-parens = char '(' *> expr <* char ')'
-
 op :: Parser Op
 op = Plus <$ char '+' <|> Times <$ char '*'
 
@@ -30,17 +27,38 @@ expr = do
   pure $ foldl' build l more
   where simple = parens <|> int
         build left (op, right) = Bin left op right
+        parens = char '(' *> expr <* char ')'
 
 eval :: Expr -> Int
 eval (Int x) = x
 eval (Bin x op y) = f (eval x) (eval y)
   where f = case op of Plus -> (+); Times -> (*)
 
-part1 :: Input -> Either ParseError Int
-part1 = fmap sum . traverse (fmap eval . parse expr "stdin")
+expr2 :: Parser Expr
+expr2 = product <|> addend
+  where paren = char '(' *> expr2 <* char ')'
+        product = try go <|> sum
+          where go = do
+                  left <- sum
+                  more <- many (char '*' *> sum)
+                  pure $ foldl' p left more
+                p l r = Bin l Times r
+        sum = try go <|> addend
+          where go = do
+                  left <- addend
+                  more <- many (char '+' *> addend)
+                  pure $ foldl' s left more
+                s l r = Bin l Plus r
+        addend = int <|> paren
 
-part2 :: Input -> ()
-part2 = const ()
+run :: Parser Expr -> Input -> Either ParseError Int
+run p = fmap sum . traverse (fmap eval . parse p "stdin")
+
+part1 :: Input -> Either ParseError Int
+part1 = run expr
+
+part2 :: Input -> Either ParseError Int
+part2 = run expr2
 
 prepare :: String -> Input
 prepare = map (filter (/= ' ')) . lines
