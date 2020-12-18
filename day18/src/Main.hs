@@ -5,6 +5,7 @@ import Control.Applicative ((<|>))
 import Data.List (foldl')
 import Text.Parsec.String (Parser)
 import Text.Parsec.Char
+import Text.Parsec.Combinator (chainl1)
 import Text.Parsec (parse, ParseError, many1, many, try)
 
 type Input = [String]
@@ -17,17 +18,11 @@ data Op = Plus | Times deriving Show
 int :: Parser Expr
 int = Int . read <$> many1 digit
 
-op :: Parser Op
-op = Plus <$ char '+' <|> Times <$ char '*'
-
-chain :: (Expr -> a -> Expr) -> Parser Expr -> Parser a -> Parser Expr
-chain combine base repeated = do
-  l <- base
-  more <- many repeated
-  pure $ foldl' combine l more
+op :: Parser (Expr -> Expr -> Expr)
+op = flip Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
 
 expr :: Parser Expr
-expr = chain build simple ((,) <$> op <*> simple)
+expr = chainl1 simple op
   where simple = parens <|> int
         build left (op, right) = Bin left op right
         parens = char '(' *> expr <* char ')'
@@ -40,10 +35,10 @@ eval (Bin x op y) = f (eval x) (eval y)
 expr2 :: Parser Expr
 expr2 = product <|> addend
   where paren = char '(' *> expr2 <* char ')'
-        product = try (chain p sum (char '*' *> sum)) <|> sum
-          where p l r = Bin l Times r
-        sum = try (chain s addend (char '+' *> addend)) <|> addend
-          where s l r = Bin l Plus r
+        product = try (chainl1 sum (p <$ char '*')) <|> sum
+          where p = flip Bin Times
+        sum = try (chainl1 addend (s <$ char '+')) <|> addend
+          where s = flip Bin Plus
         addend = int <|> paren
 
 run :: Parser Expr -> Input -> Either ParseError Int
