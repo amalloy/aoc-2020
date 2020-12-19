@@ -27,8 +27,8 @@ run p = fmap sum . traverse (fmap eval . parse p "stdin")
 
 part1 :: Input -> Either ParseError Int
 part1 = run expr
-  where expr = chainl1 (parens <|> int) op
-        parens = char '(' *> expr <* char ')'
+  where expr = chainl1 (int <|> paren) op
+        paren = char '(' *> expr <* char ')'
         op = Bin <$> (Plus <$ char '+' <|> Times <$ char '*')
 
 part2 :: Input -> Either ParseError Int
