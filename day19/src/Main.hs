@@ -85,9 +85,9 @@ part2 :: Input -> Int
 part2 (Input rules ss) = length [() | tree <- map (runParser p) ss, not $ null tree]
   where p = (m M.! 0) <* beof
         m :: IntMap (BParser ParseTree)
-        m = M.fromList
-          (    [(8, knotCompile eight), (11, knotCompile eleven)]
-            ++ [ (num, knotCompile production)
+        m = M.fromList . map (fmap knotCompile) $
+          (    [(8, eight), (11, eleven)]
+            ++ [ (num, production)
                | Rule num production <- rules
                , num `notElem` [8, 11]
                ])
