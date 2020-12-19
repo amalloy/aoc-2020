@@ -52,8 +52,6 @@ data Rule = Rule Int Production deriving Show
 data Production = Lit Char
                 | Alt [[Int]] deriving Show
 
-type ParseTree = ()
-
 int :: Parser Int
 int = read <$> some digit
 
@@ -68,36 +66,30 @@ rule = do
         cat :: Parser [Int]
         cat = int `sepEndBy` (char ' ')
 
-compile :: IntMap Production -> Int -> BParser ParseTree
-compile m root = case m M.! root of
-  Lit c -> () <$ bchar c
-  Alt options -> () <$ (asum . map cat $ options)
-    where cat = traverse (compile m)
-
 data Input = Input [Rule] [String]
 
-part1 :: Input -> Int
-part1 (Input rules ss) = length [() | tree <- map (runParser p) ss, not $ null tree]
-  where p = compile m 0 <* beof
-        m = M.fromList [(num, production) | Rule num production <- rules]
-
-part2 :: Input -> Int
-part2 (Input rules ss) = length [() | tree <- map (runParser p) ss, not $ null tree]
+solve :: ([Rule] -> [Rule]) -> Input -> Int
+solve adjust (Input rules ss) = length . filter (not . null) . map (runParser p) $ ss
   where p = (m M.! 0) <* beof
-        m :: IntMap (BParser ParseTree)
-        m = M.fromList . map (fmap knotCompile) $
-          (    [(8, eight), (11, eleven)]
-            ++ [ (num, production)
-               | Rule num production <- rules
-               , num `notElem` [8, 11]
-               ])
-        eight, eleven :: Production
-        eight = Alt [[42], [42, 8]]
-        eleven = Alt [[42, 11, 31], [42, 31]]
-        knotCompile :: Production -> BParser ParseTree
+        m = M.fromList . map (fmap knotCompile . asTuple) . adjust $ rules
+        asTuple (Rule n p) = (n, p)
+        knotCompile :: Production -> BParser ()
         knotCompile (Lit c) = () <$ bchar c
         knotCompile (Alt options) = () <$ (asum . map (sequence . cat) $ options)
           where cat xs = map (m M.!) xs
+
+part1 :: Input -> Int
+part1 = solve id
+
+part2 :: Input -> Int
+part2 = solve delta
+  where delta rules =
+          [Rule 8 eight, Rule 11 eleven]
+          ++
+          [r | r@(Rule n _) <- rules, n `notElem` [8, 11]]
+        eight, eleven :: Production
+        eight = Alt [[42], [42, 8]]
+        eleven = Alt [[42, 11, 31], [42, 31]]
 
 prepare :: String -> Input
 prepare s = let text = lines s
