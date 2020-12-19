@@ -3,7 +3,7 @@ module Main where
 import Control.Arrow ((&&&))
 import Control.Applicative ((<|>), some)
 import Text.Parsec.String (Parser)
-import Text.Parsec.Char
+import Text.Parsec.Char (digit, char)
 import Text.Parsec.Combinator (chainl1)
 import Text.Parsec (parse, ParseError)
 
