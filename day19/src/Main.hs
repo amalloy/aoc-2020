@@ -71,12 +71,12 @@ data Input = Input [Rule] [String]
 solve :: ([Rule] -> [Rule]) -> Input -> Int
 solve adjust (Input rules ss) = length . filter (not . null) . map (runParser p) $ ss
   where p = (m M.! 0) <* beof
-        m = M.fromList . map (fmap knotCompile . asTuple) . adjust $ rules
-        asTuple (Rule n p) = (n, p)
-        knotCompile :: Production -> BParser ()
-        knotCompile (Lit c) = () <$ bchar c
-        knotCompile (Alt options) = () <$ (asum . map (sequence . cat) $ options)
-          where cat xs = map (m M.!) xs
+        m = M.fromList . map compile . adjust $ rules
+        compile (Rule n prod) = (n, knot prod)
+        knot :: Production -> BParser ()
+        knot (Lit c) = () <$ bchar c
+        knot (Alt options) = () <$ (asum . map (sequence . cat) $ options)
+          where cat = map (m M.!)
 
 part1 :: Input -> Int
 part1 = solve id
