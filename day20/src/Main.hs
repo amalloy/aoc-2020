@@ -11,8 +11,11 @@ import Data.Maybe (fromJust)
 import Text.Regex.Applicative
 
 import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as M
+import qualified Data.IntMap.Strict as I
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
 
+data Orientation = Orientation {cwTurns :: Int, flipped :: Bool}
 data Piece = Piece Int [String] deriving Show
 
 canonicalize :: String -> Int
@@ -29,11 +32,11 @@ ints strs = canonicalize <$> edges strs
 type Input = [Piece]
 
 frequencies :: [Int] -> IntMap Int
-frequencies = M.fromListWith (+) . flip zip (repeat 1)
+frequencies = I.fromListWith (+) . flip zip (repeat 1)
 
 -- see how often each edge is represented
 explore :: Input -> IntMap Int
-explore = frequencies . M.elems . frequencies . (>>= asEdges)
+explore = frequencies . I.elems . frequencies . (>>= asEdges)
 
 asEdges :: Piece -> [Int]
 asEdges (Piece _ img) = map canonicalize $ edges img
@@ -41,8 +44,15 @@ asEdges (Piece _ img) = map canonicalize $ edges img
 part1 :: Input -> Int
 part1 ps = let freqs = frequencies . (>>= asEdges) $ ps
                isCorner img = let es = map canonicalize . edges $ img
-                              in length (filter ((== 1) . (freqs M.!)) es) == 2
+                              in length (filter ((== 1) . (freqs I.!)) es) == 2
            in product [id | Piece id img <- ps, isCorner img]
+
+assemble :: Input -> Map (Int, Int) (Piece, Orientation)
+assemble ps = m
+  where freqs = frequencies . (>>= asEdges) $ ps
+        isCorner img = let es = map canonicalize . edges $ img
+                       in length (filter ((== 1) . (freqs I.!)) es) == 2
+        topLeft = head [p | p@(Piece _ img) <- ps, isCorner img]
 
 part2 :: Input -> ()
 part2 = const ()
