@@ -1,0 +1,4 @@
+a b (contains A)
+c (contains C)
+d (contains D)
+a c (contains A)
