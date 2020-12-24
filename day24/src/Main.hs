@@ -14,6 +14,12 @@ import Text.Regex.Applicative
 newtype AxialCoord = AxialCoord (Sum Int, Sum Int)
   deriving (Ord, Eq, Monoid, Semigroup, Show)
 
+data Color = Black | White deriving Show
+
+black :: Color -> Bool
+black Black = True
+black White = False
+
 west, east, northWest, southEast, northEast, southWest :: AxialCoord
 west = AxialCoord (-1, 0)
 east = AxialCoord (1, 0)
@@ -24,9 +30,15 @@ southWest = southEast <> west
 
 type Input = [AxialCoord]
 
+seed :: Input -> Map AxialCoord Color
+seed = M.fromListWith combine . map start
+  where start coord = (coord, Black)
+        combine Black Black = White
+        combine White White = White
+        combine _ _ = Black
+
 part1 :: Input -> Int
-part1 = length . filter odd . M.elems . M.fromListWith (+) . map once
-  where once coord = (coord, 1)
+part1 = length . filter black . M.elems . seed
 
 part2 :: Input -> ()
 part2 = const ()
