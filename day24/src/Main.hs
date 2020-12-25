@@ -19,10 +19,6 @@ data Color = Black | White deriving Show
 
 type Input = [AxialCoord]
 
-black :: Color -> Bool
-black Black = True
-black White = False
-
 west, east, northWest, southEast, northEast, southWest :: AxialCoord
 west = AxialCoord (-1, 0)
 east = AxialCoord (1, 0)
@@ -37,6 +33,17 @@ dirs = [west, east, northWest, northEast, southWest, southEast]
 neighbors :: AxialCoord -> [AxialCoord]
 neighbors c = (<> c) <$> dirs
 
+newColor :: Color -> Int -> Color
+newColor Black 0 = White
+newColor Black n | n > 2 = White
+newColor White 2 = Black
+newColor old _ = old
+
+countBlack :: [Color] -> Int
+countBlack = length . filter black
+  where black Black = True
+        black White = False
+
 type Bound = ((Min (Sum Int), Min (Sum Int)),
               (Max (Sum Int), Max (Sum Int)))
 
@@ -47,12 +54,6 @@ bounds cs = result
   where Just result = foldMap minMax cs
         minMax (AxialCoord (x, y)) = Just ((Min x, Min y), (Max x, Max y))
 
-newColor :: Color -> Int -> Color
-newColor Black 0 = White
-newColor Black n | n > 2 = White
-newColor White 2 = Black
-newColor old _ = old
-
 step :: (Bound, Grid) -> (Bound, Grid)
 step (((Min minX, Min minY), (Max maxX, Max maxY)), m) = (bound', m')
   where bound' = ((Min (minX - 1), Min (minY - 1)), (Max (maxX + 1), Max (maxY + 1)))
@@ -62,7 +63,7 @@ step (((Min minX, Min minY), (Max maxX, Max maxY)), m) = (bound', m')
           y <- Sum <$> [getSum minY - 1..getSum maxY + 1]
           let c = AxialCoord (x, y)
               (this:ns) = map get (c : neighbors c)
-              numBlack = length . filter black $ ns
+              numBlack = countBlack ns
           pure (c, newColor this numBlack)
 
 seed :: Input -> Map AxialCoord Color
@@ -73,7 +74,7 @@ seed = M.fromListWith combine . map start
         combine _ _ = Black
 
 run :: Int -> Input -> Int
-run n = length . filter black . M.elems . snd . (!! n) . iterate step . (bounds &&& seed)
+run n = countBlack . M.elems . snd . (!! n) . iterate step . (bounds &&& seed)
 
 part1 :: Input -> Int
 part1 = run 0
