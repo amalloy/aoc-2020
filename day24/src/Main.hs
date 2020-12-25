@@ -44,24 +44,24 @@ countBlack = length . filter black
   where black Black = True
         black White = False
 
-type Bound = ((Min (Sum Int), Min (Sum Int)),
-              (Max (Sum Int), Max (Sum Int)))
+type Bound = (Min Int, Min Int, Max Int, Max Int)
 
 type Grid = Map AxialCoord Color
 
 bounds :: [AxialCoord] -> Bound
 bounds cs = result
   where Just result = foldMap minMax cs
-        minMax (AxialCoord (x, y)) = Just ((Min x, Min y), (Max x, Max y))
+        minMax (AxialCoord (Sum x, Sum y)) = Just (Min x, Min y, Max x, Max y)
 
 step :: (Bound, Grid) -> (Bound, Grid)
-step (((Min minX, Min minY), (Max maxX, Max maxY)), m) = (bound', m')
-  where bound' = ((Min (minX - 1), Min (minY - 1)), (Max (maxX + 1), Max (maxY + 1)))
+step ((Min minX, Min minY, Max maxX, Max maxY), m) = (bound', m')
+  where bound' = (Min $ minX - 1, Min $ minY - 1,
+                  Max $ maxX + 1, Max $ maxY + 1)
         get c = M.findWithDefault White c m
         m' = M.fromList $ do
-          x <- Sum <$> [getSum minX - 1..getSum maxX + 1]
-          y <- Sum <$> [getSum minY - 1..getSum maxY + 1]
-          let c = AxialCoord (x, y)
+          x <- [minX - 1..maxX + 1]
+          y <- [minY - 1..maxY + 1]
+          let c = AxialCoord (Sum x, Sum y)
               (this:ns) = map get (c : neighbors c)
               numBlack = countBlack ns
           pure (c, newColor this numBlack)
