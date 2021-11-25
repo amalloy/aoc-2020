@@ -70,7 +70,7 @@ tick cube = do
 run :: Coord c => Parameters c -> Int
 run (Parameters bounds alive) = runST $ do
   cube <- newArray bounds False
-  for_ alive $ \c -> writeArray cube c True
+  for_ alive $ flip (writeArray cube) True
   cube' <- iterateM 6 tick cube
   length . filter id <$> getElems cube'
 
