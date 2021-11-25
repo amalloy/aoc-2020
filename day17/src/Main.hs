@@ -9,6 +9,7 @@ import Control.Monad.ST (ST, runST)
 import Data.Array.ST (STUArray, readArray, writeArray, newArray, getBounds, getElems)
 import Data.Foldable (for_)
 import Data.Ix (Ix, inRange, range)
+import Data.List.NonEmpty (NonEmpty(..))
 
 type Vec2 = (Int, Int)
 data Parameters a = Parameters (a, a) [a] deriving Functor
@@ -16,19 +17,19 @@ type Input = Parameters Vec2
 type Cube s i = STUArray s i Bool
 
 class Ix c => Coord c where
-  neighbors :: c -> [c]
+  neighbors :: c -> NonEmpty c
   plus :: Int -> c -> c
 
 instance Coord Int where
   plus = (+)
-  neighbors = sequence [id, pred, succ]
+  neighbors = sequenceA $ id :| [pred, succ]
 
 instance Coord c => Coord (Int, c) where
   plus n (x, c) = (plus n x, plus n c)
   neighbors (x, c) = do
     n <- neighbors c
-    delta <- [0, -1, 1]
-    pure (plus x delta, n)
+    delta <- 0 :| [-1, 1]
+    pure (x `plus` delta, n)
 
 nextDimension :: a -> (Int, a)
 nextDimension n = (0, n)
@@ -52,7 +53,7 @@ tick cube = do
   cube' <- newArray bounds' False
   for_ (range bounds') $ \coord -> do
     let ns = neighbors coord
-    self:others <- traverse oldValue ns
+    self :| others <- traverse oldValue ns
     writeArray cube' coord (shouldLive self (length $ filter id others))
   pure cube'
 
