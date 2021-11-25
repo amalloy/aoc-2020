@@ -16,6 +16,16 @@ data Parameters a = Parameters (a, a) [a] deriving Functor
 type Input = Parameters Vec2
 type Cube s i = STUArray s i Bool
 
+{-
+Laws:
+1. plus 0 x = x (follows from 2&4)
+2. plus a (plus b x) = plus (a + b) x
+3. plus a (plus b x) = plus b (plus a x)
+4. plus a (plus (negate a) x) = x
+5. forall c n ns.
+     neighbors c = (n :| ns) =>
+       n = c
+ -}
 class Ix c => Coord c where
   neighbors :: c -> NonEmpty c
   plus :: Int -> c -> c
